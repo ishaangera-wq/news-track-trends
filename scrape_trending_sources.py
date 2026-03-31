@@ -323,47 +323,534 @@ def render_html(rows):
     data_json = json.dumps(rows, ensure_ascii=False)
     return f"""<!doctype html>
 <meta charset="utf-8">
-<title>Trending Sources Dashboard</title>
+<title>News Track Trends</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  :root {{ --font: system-ui, -apple-system, Segoe UI, Roboto, Arial; }}
-  body {{ font-family: var(--font); margin: 24px; }}
-  header {{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }}
-  input, select, button {{ font: 14px var(--font); padding: 8px 10px; border-radius: 10px; border:1px solid #ddd; }}
-  .grid {{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 18px; }}
-  .panel {{ border:1px solid #eee; border-radius: 14px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.05); }}
-  .panel h2 {{ font-size: 18px; margin: 0 0 10px; }}
-  ol {{ margin:0; padding-left: 22px; }}
-  li {{ margin: 8px 0; line-height: 1.35; }}
-  a {{ text-decoration: none; }}
-  a:hover {{ text-decoration: underline; }}
-  .muted {{ color:#666; font-size: 12px; }}
-  .meta {{ display:flex; gap:8px; align-items:center; margin-top: 6px; }}
-  @media (max-width: 1100px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+  :root {{
+    --paper: #f3ead8;
+    --paper-deep: #e7d8bb;
+    --ink: #181411;
+    --muted: #6c6257;
+    --line: rgba(24, 20, 17, 0.12);
+    --panel: rgba(255,255,255,0.76);
+    --accent: #c64824;
+    --accent-soft: rgba(198,72,36,0.13);
+    --forest: #445739;
+    --shadow: 0 18px 44px rgba(85, 61, 34, 0.12);
+    --radius-xl: 30px;
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --display: Georgia, "Times New Roman", serif;
+    --body: "Avenir Next", "Segoe UI", sans-serif;
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--body);
+    background:
+      radial-gradient(circle at top left, rgba(198,72,36,0.16), transparent 25%),
+      radial-gradient(circle at 90% 12%, rgba(68,87,57,0.12), transparent 22%),
+      linear-gradient(180deg, #f7f0e2 0%, var(--paper) 55%, var(--paper-deep) 100%);
+  }}
+  body::before {{
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }}
+  a {{ color: inherit; text-decoration: none; }}
+  .page {{
+    width: min(1400px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 24px 0 40px;
+  }}
+  .hero {{
+    position: relative;
+    overflow: hidden;
+    padding: 28px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, rgba(29,23,18,0.98), rgba(84,44,25,0.95) 45%, rgba(126,54,29,0.92) 100%);
+    color: #fff8f0;
+    box-shadow: var(--shadow);
+  }}
+  .hero::after {{
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,223,185,0.28), transparent 68%);
+  }}
+  .eyebrow {{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.12);
+  }}
+  .hero-grid {{
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.8fr);
+    gap: 22px;
+    margin-top: 18px;
+    position: relative;
+    z-index: 1;
+  }}
+  .hero h1 {{
+    margin: 14px 0 10px;
+    max-width: 12ch;
+    font: 700 clamp(42px, 6vw, 72px)/0.94 var(--display);
+    letter-spacing: -0.05em;
+  }}
+  .hero p {{
+    margin: 0;
+    max-width: 58ch;
+    font-size: 16px;
+    line-height: 1.65;
+    color: rgba(255,248,240,0.82);
+  }}
+  .hero-stack {{
+    display: grid;
+    gap: 14px;
+  }}
+  .hero-note {{
+    padding: 18px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+  }}
+  .hero-note strong {{
+    display: block;
+    margin-bottom: 8px;
+    font-size: 15px;
+  }}
+  .hero-note p {{
+    font-size: 14px;
+    line-height: 1.55;
+  }}
+  .metrics {{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 22px;
+    position: relative;
+    z-index: 1;
+  }}
+  .metric {{
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+  }}
+  .metric-label {{
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,248,240,0.72);
+  }}
+  .metric-value {{
+    display: block;
+    margin-top: 6px;
+    font-size: clamp(24px, 3.2vw, 34px);
+    font-weight: 700;
+  }}
+  .controls {{
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: var(--radius-xl);
+    background: rgba(255,255,255,0.56);
+    border: 1px solid rgba(255,255,255,0.6);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(86, 63, 42, 0.08);
+  }}
+  .toolbar {{
+    display: grid;
+    grid-template-columns: 1.45fr repeat(3, minmax(160px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+  }}
+  .field {{
+    display: grid;
+    gap: 6px;
+  }}
+  .field span {{
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }}
+  input, select, button {{
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.78);
+    color: var(--ink);
+    font: inherit;
+  }}
+  button {{
+    width: auto;
+    border-color: transparent;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    font-weight: 700;
+  }}
+  .source-pills {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }}
+  .pill {{
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.7);
+    color: var(--ink);
+    cursor: pointer;
+  }}
+  .pill.active {{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }}
+  .summary {{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }}
+  .summary-card {{
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.64);
+    box-shadow: 0 10px 24px rgba(82, 62, 42, 0.08);
+  }}
+  .summary-card strong {{
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }}
+  .summary-card span {{
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+  }}
+  .content {{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 18px;
+    margin-top: 20px;
+    align-items: start;
+  }}
+  .stories {{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }}
+  .story-card {{
+    display: grid;
+    gap: 12px;
+    min-height: 180px;
+    padding: 18px;
+    border-radius: 22px;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.62);
+    box-shadow: 0 14px 34px rgba(82, 62, 42, 0.1);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }}
+  .story-card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(82, 62, 42, 0.14);
+  }}
+  .story-top {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }}
+  .badge {{
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+  }}
+  .rank {{
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }}
+  .story-card h3 {{
+    margin: 0;
+    font: 700 clamp(22px, 2.3vw, 29px)/1.08 var(--display);
+    letter-spacing: -0.03em;
+  }}
+  .story-meta {{
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--muted);
+  }}
+  .story-link {{
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 11px 14px;
+    border-radius: 12px;
+    background: rgba(24,20,17,0.05);
+    font-weight: 700;
+  }}
+  .group-card {{
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.66);
+    border: 1px solid rgba(255,255,255,0.62);
+    box-shadow: 0 14px 30px rgba(82, 62, 42, 0.1);
+  }}
+  .sidebar {{
+    display: grid;
+    gap: 16px;
+    position: sticky;
+    top: 18px;
+  }}
+  .sidebar-card {{
+    padding: 18px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.62);
+    box-shadow: 0 12px 28px rgba(82, 62, 42, 0.08);
+  }}
+  .sidebar-card h2 {{
+    margin: 0 0 10px;
+    font: 700 24px/1.08 var(--display);
+  }}
+  .sidebar-card p, .sidebar-card li {{
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+  }}
+  .sidebar-card ol {{
+    margin: 0;
+    padding-left: 18px;
+  }}
+  .sidebar-card li + li {{ margin-top: 10px; }}
+  .source-list {{
+    display: grid;
+    gap: 10px;
+  }}
+  .source-row {{
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed rgba(24,20,17,0.14);
+  }}
+  .source-row:last-child {{
+    border-bottom: 0;
+    padding-bottom: 0;
+  }}
+  .source-row span {{
+    font-size: 12px;
+    color: var(--muted);
+  }}
+  .empty {{
+    grid-column: 1 / -1;
+    padding: 34px 22px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.72);
+    border: 1px dashed rgba(24,20,17,0.18);
+    text-align: center;
+    color: var(--muted);
+  }}
+  .footer {{
+    margin-top: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }}
+  @media (max-width: 1180px) {{
+    .toolbar {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+    .content {{ grid-template-columns: 1fr; }}
+    .sidebar {{ position: static; }}
+  }}
+  @media (max-width: 920px) {{
+    .hero-grid,
+    .metrics,
+    .summary,
+    .stories {{ grid-template-columns: 1fr; }}
+  }}
+  @media (max-width: 640px) {{
+    .page {{ width: min(100% - 20px, 1400px); padding-top: 14px; }}
+    .hero, .controls {{ padding: 18px; }}
+    .toolbar {{ grid-template-columns: 1fr; }}
+    button {{ width: 100%; }}
+  }}
 </style>
-<header>
-  <strong>Trending Sources Dashboard</strong>
-  <span class="muted">Self-contained dashboard with embedded scraper output.</span>
-  <input id="search" placeholder="Search headline...">
-  <select id="sort">
-    <option value="rankAsc">Sort by rank (asc)</option>
-    <option value="rankDesc">Sort by rank (desc)</option>
-    <option value="alpha">Sort by headline (A→Z)</option>
-  </select>
-  <button id="reload">Reset filters</button>
-</header>
-<div class="grid" id="grid"></div>
+<div class="page">
+  <section class="hero">
+    <div class="eyebrow">News Track Trends</div>
+    <div class="hero-grid">
+      <div>
+        <h1>All tracked trending pages in one newsroom-style dashboard.</h1>
+        <p>We pull live trend links from Indian Express, Hindustan Times, LiveMint, India Today, Times of India ETimes, Times of India Viral News, and NDTV, then lay them out on one page that is easy to scan, search, and host.</p>
+      </div>
+      <div class="hero-stack">
+        <div class="hero-note">
+          <strong>Why this page feels different</strong>
+          <p>Instead of a plain scraper dump, this layout treats each story like a front-page item while still preserving the original source and rank from each publisher.</p>
+        </div>
+        <div class="hero-note">
+          <strong>What updates automatically</strong>
+          <p>The HTML stays self-contained, so GitHub Pages can host it directly while your workflow refreshes the data snapshot every two hours.</p>
+        </div>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <span class="metric-label">Tracked Sources</span>
+        <span class="metric-value" id="metricSources">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Stories In Snapshot</span>
+        <span class="metric-value" id="metricStories">0</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Last Refresh</span>
+        <span class="metric-value" id="metricRefresh">-</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="toolbar">
+      <label class="field">
+        <span>Search</span>
+        <input id="search" placeholder="Search topics, people, headlines...">
+      </label>
+      <label class="field">
+        <span>Source</span>
+        <select id="sourceSelect"></select>
+      </label>
+      <label class="field">
+        <span>Sort</span>
+        <select id="sort">
+          <option value="rankAsc">Rank: low to high</option>
+          <option value="rankDesc">Rank: high to low</option>
+          <option value="alpha">Headline: A to Z</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>View</span>
+        <select id="viewMode">
+          <option value="cards">Mixed front page</option>
+          <option value="source">Grouped by source</option>
+        </select>
+      </label>
+      <button id="reload" type="button">Reset</button>
+    </div>
+    <div class="source-pills" id="sourcePills"></div>
+    <div class="summary">
+      <div class="summary-card">
+        <strong>Visible stories</strong>
+        <span id="visibleCount">0</span>
+      </div>
+      <div class="summary-card">
+        <strong>Source focus</strong>
+        <span id="activeSource">All</span>
+      </div>
+      <div class="summary-card">
+        <strong>Top ranked match</strong>
+        <span id="topRank">-</span>
+      </div>
+      <div class="summary-card">
+        <strong>Search state</strong>
+        <span id="searchState">Everything</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <main class="stories" id="stories"></main>
+    <aside class="sidebar">
+      <section class="sidebar-card">
+        <h2>Source Snapshot</h2>
+        <div class="source-list" id="sourceStats"></div>
+      </section>
+      <section class="sidebar-card">
+        <h2>Reading Mode</h2>
+        <ol>
+          <li>Use <strong>Mixed front page</strong> to scan everything like a single trend desk.</li>
+          <li>Use <strong>Grouped by source</strong> if you want each publisher separated.</li>
+          <li>Story rank is preserved from the source page captured at scrape time.</li>
+        </ol>
+      </section>
+      <section class="sidebar-card">
+        <h2>Coverage</h2>
+        <p id="coverageNote">Checking source availability...</p>
+      </section>
+    </aside>
+  </section>
+
+  <div class="footer">Self-contained dashboard with embedded scraper output, ready for GitHub Pages.</div>
+</div>
 <script>
 const RAW = {data_json};
 const SOURCES = [...new Set(RAW.map(d => d.source))];
-const state = {{ raw: RAW, filterText: "", sortMode: "rankAsc" }};
+const state = {{ raw: RAW, filterText: "", sortMode: "rankAsc", source: "All", viewMode: "cards" }};
 
 function asc(a, b) {{
   return a < b ? -1 : a > b ? 1 : 0;
 }}
 
+function formatStamp(value) {{
+  if (!value) return "-";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return value;
+  return dt.toLocaleString("en-IN", {{
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }});
+}}
+
 function applyFilters(rows) {{
   let result = rows.slice();
+  if (state.source !== "All") {{
+    result = result.filter(d => d.source === state.source);
+  }}
   if (state.filterText) {{
     const q = state.filterText.toLowerCase();
     result = result.filter(d => (d.headline || "").toLowerCase().includes(q));
@@ -376,72 +863,155 @@ function applyFilters(rows) {{
   return result;
 }}
 
-function panelId(source) {{
-  return source.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+function bySource(rows) {{
+  return SOURCES.map(source => ({{
+    source,
+    rows: rows.filter(row => row.source === source)
+  }})).filter(group => group.rows.length);
 }}
 
-function ensurePanels() {{
-  const grid = document.querySelector("#grid");
-  grid.innerHTML = "";
-  for (const source of SOURCES) {{
-    const panel = document.createElement("div");
-    const id = panelId(source);
-    panel.className = "panel";
-    panel.innerHTML = `<h2>${{source}}</h2><div class="meta" id="${{id}}-meta"></div><ol id="${{id}}-list"></ol>`;
-    grid.appendChild(panel);
+function sourceDomain(link) {{
+  try {{
+    return new URL(link).hostname.replace(/^www\\./, "");
+  }} catch (_err) {{
+    return link;
   }}
 }}
 
-function renderList(listId, rows) {{
-  const list = document.querySelector(listId);
-  list.innerHTML = "";
-  for (const row of rows) {{
-    const li = document.createElement("li");
-    const link = document.createElement("a");
-    link.href = row.link;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = `#${{row.rank}} ${{row.headline}}`;
-    li.appendChild(link);
-    list.appendChild(li);
-  }}
+function cardTemplate(row) {{
+  return `
+    <article class="story-card">
+      <div class="story-top">
+        <span class="badge">${{row.source}}</span>
+        <span class="rank">Rank #${{row.rank}}</span>
+      </div>
+      <h3>${{row.headline}}</h3>
+      <div class="story-meta">
+        <span>${{formatStamp(row.collected_at_iso)}}</span>
+        <span>${{sourceDomain(row.link)}}</span>
+      </div>
+      <a class="story-link" href="${{row.link}}" target="_blank" rel="noopener">Open article ↗</a>
+    </article>
+  `;
 }}
 
-function renderMeta(metaId, rows) {{
-  const el = document.querySelector(metaId);
+function groupTemplate(group) {{
+  return `
+    <section class="group-card">
+      <div class="story-top">
+        <span class="badge">${{group.source}}</span>
+        <span class="rank">${{group.rows.length}} visible stories</span>
+      </div>
+      <div class="stories">${{group.rows.map(cardTemplate).join("")}}</div>
+    </section>
+  `;
+}}
+
+function renderStories(rows) {{
+  const root = document.querySelector("#stories");
   if (!rows.length) {{
-    el.textContent = "No data";
+    root.innerHTML = `<div class="empty">No stories match this filter yet. Try resetting the search or switching source.</div>`;
     return;
   }}
-  el.textContent = `Items: ${{rows.length}} · Collected: ${{rows[0].collected_at_iso || ""}}`;
+  if (state.viewMode === "source") {{
+    root.innerHTML = bySource(rows).map(groupTemplate).join("");
+    return;
+  }}
+  root.innerHTML = rows.map(cardTemplate).join("");
+}}
+
+function renderSourceStats(rows) {{
+  document.querySelector("#sourceStats").innerHTML = SOURCES.map(source => {{
+    const count = rows.filter(row => row.source === source).length;
+    return `<div class="source-row"><strong>${{source}}</strong><span>${{count}} visible</span></div>`;
+  }}).join("");
+}}
+
+function renderSummary(rows) {{
+  document.querySelector("#visibleCount").textContent = String(rows.length);
+  document.querySelector("#activeSource").textContent = state.source;
+  document.querySelector("#topRank").textContent = rows.length ? `#${{rows[0].rank}}` : "-";
+  document.querySelector("#searchState").textContent = state.filterText ? `“${{state.filterText}}”` : "Everything";
+}}
+
+function renderHeroMetrics() {{
+  document.querySelector("#metricSources").textContent = String(SOURCES.length);
+  document.querySelector("#metricStories").textContent = String(RAW.length);
+  const latest = RAW.reduce((acc, row) => {{
+    const stamp = row.collected_at_iso || "";
+    return stamp > acc ? stamp : acc;
+  }}, "");
+  document.querySelector("#metricRefresh").textContent = formatStamp(latest);
+}}
+
+function renderCoverage() {{
+  const missing = SOURCES.filter(source => !RAW.some(row => row.source === source));
+  document.querySelector("#coverageNote").textContent = missing.length
+    ? `No stories in the current snapshot for: ${{missing.join(", ")}}. That usually means the publisher blocked access or returned no qualifying links during the latest run.`
+    : "All tracked sources returned at least one story in the latest snapshot.";
+}}
+
+function renderPills() {{
+  const host = document.querySelector("#sourcePills");
+  host.innerHTML = "";
+  for (const source of ["All", ...SOURCES]) {{
+    const button = document.createElement("button");
+    button.className = `pill${{state.source === source ? " active" : ""}}`;
+    button.type = "button";
+    button.textContent = source;
+    button.addEventListener("click", () => {{
+      state.source = source;
+      document.querySelector("#sourceSelect").value = source;
+      render();
+    }});
+    host.appendChild(button);
+  }}
+}}
+
+function fillSourceSelect() {{
+  document.querySelector("#sourceSelect").innerHTML =
+    ["All", ...SOURCES].map(source => `<option value="${{source}}">${{source}}</option>`).join("");
 }}
 
 function render() {{
-  for (const source of SOURCES) {{
-    const rows = applyFilters(state.raw.filter(d => d.source === source));
-    const id = panelId(source);
-    renderList(`#${{id}}-list`, rows);
-    renderMeta(`#${{id}}-meta`, rows);
-  }}
+  const rows = applyFilters(state.raw);
+  renderStories(rows);
+  renderSourceStats(rows);
+  renderSummary(rows);
+  renderPills();
 }}
 
 document.querySelector("#search").addEventListener("input", ev => {{
   state.filterText = ev.target.value || "";
   render();
 }});
+document.querySelector("#sourceSelect").addEventListener("change", ev => {{
+  state.source = ev.target.value;
+  render();
+}});
 document.querySelector("#sort").addEventListener("change", ev => {{
   state.sortMode = ev.target.value;
+  render();
+}});
+document.querySelector("#viewMode").addEventListener("change", ev => {{
+  state.viewMode = ev.target.value;
   render();
 }});
 document.querySelector("#reload").addEventListener("click", () => {{
   state.filterText = "";
   state.sortMode = "rankAsc";
+  state.source = "All";
+  state.viewMode = "cards";
   document.querySelector("#search").value = "";
+  document.querySelector("#sourceSelect").value = "All";
   document.querySelector("#sort").value = "rankAsc";
+  document.querySelector("#viewMode").value = "cards";
   render();
 }});
 
-ensurePanels();
+fillSourceSelect();
+renderHeroMetrics();
+renderCoverage();
 render();
 </script>
 """
